@@ -2,9 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "solady/src/utils/LibString.sol";
+import "solady/src/utils/SSTORE2.sol";
+import "solady/src/utils/LibZip.sol";
 import "solady/src/tokens/ERC721.sol";
 import "solady/src/auth/Ownable.sol";
-import "sstore2/SSTORE2.sol";
 
 contract alexandria is ERC721, Ownable {
 
@@ -35,7 +36,7 @@ contract alexandria is ERC721, Ownable {
     function symbol() public view override returns (string memory) { return (_symbol); }
     function tokenURI(uint256 _tokenId) public view override returns (string memory text) {
         for (uint256 i; i < textStorage.length;) {
-            text = LibString.concat(text, string(SSTORE2.read(textStorage[i])));
+            text = LibString.concat(text, string(LibZip.flzDecompress(SSTORE2.read(textStorage[i]))));
             unchecked { ++i; }
         }
     }
@@ -52,12 +53,14 @@ contract alexandria is ERC721, Ownable {
         return (tokens);
     }
 
-    function write(string calldata _text) external onlyOwner returns (address) {
-        textStorage.push(SSTORE2.write(bytes(_text)));
-        return (textStorage[textStorage.length - 1]);
+    function write(bytes[] memory _byteData) external onlyOwner {
+        for (uint256 i; i < _byteData.length;) {
+            textStorage.push(SSTORE2.write(_byteData[i]));
+            unchecked { ++i; }
+        }
     }
 
-    function overwrite(string calldata _text, uint256 _index) external onlyOwner {
-        textStorage[_index] = SSTORE2.write(bytes(_text));
+    function overwrite(uint256 _index, bytes memory _data) external onlyOwner {
+        textStorage[_index] = SSTORE2.write(_data);
     }
 }
